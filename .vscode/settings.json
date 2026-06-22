@@ -1,0 +1,13 @@
+{
+  "files.exclude": {
+    "slides/*.nav": true,
+    "slides/*.out": true,
+    "slides/*.snm": true,
+    "slides/*.log": true,
+    "slides/*.gz": true,
+    "slides/*.toc": true,
+    "slides/*.fls": true,
+    "slides/*.fdb_latexmk": true,
+    "slides/*.aux": true
+  }
+}

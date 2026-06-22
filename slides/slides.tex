@@ -1,0 +1,137 @@
+\documentclass[aspectratio=169,xcolor=table]{beamer}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lipsum, lmodern}
+\usepackage{csquotes}
+\usepackage{xcolor}
+\usepackage[portuguese]{babel}
+
+% ------------------------------------------------
+% Tema e Configurações do Beamer
+% ------------------------------------------------
+\usetheme{DCC}
+
+\setbeamertemplate{itemize items}[circle]
+\setbeamertemplate{itemize subitem}[circle]
+\setlength{\itemsep}{0.8em}
+\setlength{\parskip}{0.5em}
+
+\graphicspath{{imgs/}{./imgs/}}
+
+\author[Autor1; Autor2]{%
+  \textbf{Autor 1} \and \textbf{Autor 2}
+}
+\title{Título da Apresentação}
+\subtitle{Subtítulo opcional}
+\institute{Instituição \\ Departamento}
+\date{\today}
+
+\begin{document}
+
+%-------------------------------------------------
+%  SLIDE DE TÍTULO
+%-------------------------------------------------
+\begin{frame}[plain,noframenumbering]
+    \titlepage
+\end{frame}
+
+%-------------------------------------------------
+%  SLIDE DE AGENDA
+%-------------------------------------------------
+\begin{frame}{Agenda}
+    \tableofcontents
+\end{frame}
+
+\setlength{\parskip}{1em}
+
+%=================================================
+\section{Seção 1}
+%=================================================
+\begin{frame}{Slide com lista}
+    \begin{itemize}
+        \item Primeiro item
+        \item Segundo item
+        \item Terceiro item
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Slide com lista aninhada}
+    \begin{itemize}
+        \item Item principal
+        \begin{itemize}
+            \item Subitem A
+            \item Subitem B
+        \end{itemize}
+        \item Outro item principal
+    \end{itemize}
+\end{frame}
+
+%=================================================
+\section{Seção 2}
+%=================================================
+\begin{frame}{Slide com imagem}
+    \begin{center}
+        % \includegraphics[height=0.4\textheight]{nome-da-imagem.png}
+        \fbox{\parbox[c][0.4\textheight][c]{0.6\textwidth}{\centering Placeholder de imagem}}
+    \end{center}
+    \vspace{0.5em}
+    Texto complementar abaixo da imagem.
+\end{frame}
+
+\begin{frame}{Slide com texto e lista}
+    Parágrafo introdutório antes da lista.
+
+    \begin{itemize}
+        \item \textbf{Rótulo:} descrição do item
+        \item \textbf{Rótulo:} descrição do item
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Slide com colunas}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Coluna esquerda}
+            \begin{itemize}
+                \item Item 1
+                \item Item 2
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{Coluna direita}
+            \begin{itemize}
+                \item Item A
+                \item Item B
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Slide com bloco de destaque}
+    \begin{block}{Bloco informativo}
+        Conteúdo dentro de um \texttt{block}.
+    \end{block}
+
+    \begin{alertblock}{Bloco de alerta}
+        Conteúdo dentro de um \texttt{alertblock}.
+    \end{alertblock}
+\end{frame}
+
+%=================================================
+\section{Conclusão}
+%=================================================
+\begin{frame}{Conclusão}
+    Texto de encerramento da apresentação.
+\end{frame}
+
+%=================================================
+\section{Perguntas}
+%=================================================
+\begin{frame}{Perguntas e Comentários}
+    \begin{center}
+        \Huge Obrigado!
+    \end{center}
+\end{frame}
+
+\end{document}
