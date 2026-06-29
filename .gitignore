@@ -5,12 +5,10 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 
-data/raw/*
-!data/raw/.gitkeep
-data/interim/*
-!data/interim/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
+data/raw/
+data/interim/
+data/processed/
+data/cache/
 
 slides/*.pdf
 slides/_build/
@@ -27,5 +25,3 @@ slides/_build/
 
 web/node_modules/
 web/dist/
-
-data/cache/
