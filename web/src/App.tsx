@@ -63,24 +63,30 @@ function clusterLabel(i: number, k: number): string {
   return `Médio ${i}`;
 }
 
-function ClusterLegend({ k }: { k: number }) {
-  const cores = CLUSTER_COLORS.slice(0, k);
-  const extra =
-    k > CLUSTER_COLORS.length
-      ? Array.from({ length: k - CLUSTER_COLORS.length }, (_, i) => {
-          const t = (i + 1) / (k - CLUSTER_COLORS.length + 1);
-          const r = Math.round(180 + 75 * t);
-          return `#${r.toString(16).padStart(2, "0")}5533`;
-        })
-      : [];
-  const allColors = [...cores, ...extra].slice(0, k);
+function ClusterLegend({
+  k,
+  colors,
+  selected,
+  onSelect,
+}: {
+  k: number;
+  colors: string[];
+  selected: number | null;
+  onSelect: (cluster: number | null) => void;
+}) {
   return (
     <div className="legend">
-      {allColors.map((cor, i) => (
-        <span className="legend-item" key={i}>
+      {colors.map((cor, i) => (
+        <button
+          type="button"
+          key={i}
+          className={`legend-item legend-btn${selected === i ? " active" : ""}${selected != null && selected !== i ? " dimmed" : ""}`}
+          onClick={() => onSelect(selected === i ? null : i)}
+          aria-pressed={selected === i}
+        >
           <span className="legend-swatch" style={{ background: cor }} />
           {clusterLabel(i, k)}
-        </span>
+        </button>
       ))}
     </div>
   );
@@ -113,6 +119,7 @@ export default function App() {
   const [clusterLoading, setClusterLoading] = useState(false);
   const [clusterCached, setClusterCached] = useState<boolean | null>(null);
   const [clusterError, setClusterError] = useState<string | null>(null);
+  const [clusterFilter, setClusterFilter] = useState<number | null>(null);
 
   const anoAtual = ano ?? anosOpcoes[0] ?? new Date().getFullYear();
 
@@ -202,6 +209,10 @@ export default function App() {
     };
   }, [mapUfs, ano, k]);
 
+  useEffect(() => {
+    setClusterFilter(null);
+  }, [k, ufSel, anoAtual]);
+
   const clusterData = useMemo(() => {
     if (!weekly.length) return [];
     const key = String(semana);
@@ -247,13 +258,12 @@ export default function App() {
   }, [k]);
 
   const volumeSectionLoading = anosLoading || regionLoading || resumoLoading;
-  const semanalSectionLoading =
+  const clusterSectionLoading =
     anosLoading ||
     regionLoading ||
     clusterLoading ||
-    (mapUfs.length > 0 && weekly.length === 0);
-  const mapSectionLoading =
-    anosLoading || regionLoading || clusterLoading || (mapUfs.length > 0 && !geoMapa);
+    (mapUfs.length > 0 && weekly.length === 0) ||
+    (mapUfs.length > 0 && !geoMapa);
 
   const mapLabel =
     ufSel === UF_TODOS ? `todos (${ufs.length})` : `${ufSel} — ${UF_NOMES[ufSel] ?? ufSel}`;
@@ -309,21 +319,6 @@ export default function App() {
               ))}
             </select>
           </div>
-          <div className="control-group">
-            <label htmlFor="k">Grupos (k)</label>
-            <select
-              id="k"
-              value={k}
-              onChange={(e) => setK(Number(e.target.value))}
-              disabled={initLoading}
-            >
-              {[2, 3, 4, 5, 6].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
         {(anosError || regionError) && (
@@ -364,71 +359,21 @@ export default function App() {
         </Chapter>
 
         <Chapter
-          title="Ritmo semanal"
-          loading={semanalSectionLoading}
-          loadingLabel={
-            clusterLoading
-              ? `Clusterizando ${mapUfs.length} estado(s) · k=${k}…`
-              : "Aguardando dados regionais…"
-          }
-        >
-          <p>
-            Casos por semana
-            {ufSel === UF_TODOS
-              ? ` — soma de ${mapUfs.length} estado(s) em ${anoAtual}`
-              : ` — ${UF_NOMES[ufSel] ?? ufSel} em ${anoAtual}`}
-            .
-          </p>
-          {clusterError && <ErrorBox msg={clusterError} />}
-          {weekly.length > 0 && (
-            <div className="viz">
-              <ChartSemanas
-                data={weekly}
-                seriesLabel={semanaLabel}
-                activeSemana={semana}
-                onSemanaSelect={setSemanaIdx}
-              />
-            </div>
-          )}
-        </Chapter>
-
-        {weekly.length > 0 && (
-          <div className="semana-bridge">
-            <div className="control-group">
-              <label htmlFor="sem-slider">
-                Semana {semana} · {fmt(casosSemana)} casos
-                {ufSel === UF_TODOS ? " na região" : ` em ${ufSel}`}
-              </label>
-              <input
-                id="sem-slider"
-                type="range"
-                min={0}
-                max={Math.max(0, weekly.length - 1)}
-                value={semanaIdx}
-                onChange={(e) => setSemanaIdx(Number(e.target.value))}
-                disabled={preparing}
-              />
-            </div>
-            <p className="semana-bridge-hint">
-              Arraste o controle ou clique em um ponto do gráfico acima — o mapa abaixo
-              acompanha a semana selecionada.
-            </p>
-          </div>
-        )}
-
-        <Chapter
           title="Clusters semana a semana"
-          loading={mapSectionLoading}
+          loading={clusterSectionLoading}
           loadingLabel={
             regionLoading
               ? "Baixando malhas e extraindo SINAN…"
               : clusterLoading
-                ? `Calculando clusters · semana ${semana}…`
-                : "Montando mapa…"
+                ? `Clusterizando ${mapUfs.length} estado(s) · k=${k}…`
+                : "Montando visualizações…"
           }
         >
           <p>
-            K-means em log(casos) — {mapLabel} · semana {semana}.
+            K-means em log(casos) — {mapLabel} · {anoAtual}.
+            {ufSel === UF_TODOS
+              ? ` Soma de ${mapUfs.length} estado(s).`
+              : ` ${UF_NOMES[ufSel] ?? ufSel}.`}
             {!preparing && clusterCached === true && (
               <span className="params-cached"> · do cache</span>
             )}
@@ -436,7 +381,29 @@ export default function App() {
               <span className="params-live"> · recém-calculado</span>
             )}
           </p>
-          <ClusterLegend k={k} />
+          <div className="chapter-controls">
+            <div className="control-group">
+              <label htmlFor="k">Grupos (k)</label>
+              <select
+                id="k"
+                value={k}
+                onChange={(e) => setK(Number(e.target.value))}
+                disabled={preparing}
+              >
+                {[2, 3, 4, 5, 6].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <ClusterLegend
+            k={k}
+            colors={clusterColors}
+            selected={clusterFilter}
+            onSelect={setClusterFilter}
+          />
           {clusterError && <ErrorBox msg={clusterError} />}
           {geoMapa && geoMapa.features.length > 0 && clusterData.length > 0 && (
             <div className="viz">
@@ -445,12 +412,55 @@ export default function App() {
                 counts={clusterData}
                 valueKey="cluster"
                 clusterColors={clusterColors}
-                mapKey={`${ufSel}-${anoAtual}-${semana}-k${k}`}
+                clusterFilter={clusterFilter}
+                mapKey={`${ufSel}-${anoAtual}-${semana}-k${k}-f${clusterFilter ?? "all"}`}
               />
               <p className="viz-caption">
-                {clusterData.length} municípios
+                Semana {semana}
+                {clusterFilter != null && (
+                  <> · filtrando <strong>{clusterLabel(clusterFilter, k)}</strong></>
+                )}
+                {" · "}
+                {clusterFilter != null
+                  ? `${clusterData.filter((m) => m.cluster === clusterFilter).length} municípios`
+                  : `${clusterData.length} municípios`}
                 {ufSel === UF_TODOS ? ` · ${mapUfs.length} estados` : ` · ${ufSel}`}
-                {" · "}sem cluster explícito = baixo (0)
+              </p>
+            </div>
+          )}
+          {weekly.length > 0 && (
+            <div className="viz">
+              <p className="viz-lead">
+                Casos por semana — {semanaLabel.toLowerCase()} em {anoAtual}.
+              </p>
+              <ChartSemanas
+                data={weekly}
+                seriesLabel={semanaLabel}
+                activeSemana={semana}
+                onSemanaSelect={setSemanaIdx}
+              />
+            </div>
+          )}
+          {weekly.length > 0 && (
+            <div className="semana-bridge">
+              <div className="control-group">
+                <label htmlFor="sem-slider">
+                  Semana {semana} · {fmt(casosSemana)} casos
+                  {ufSel === UF_TODOS ? " na região" : ` em ${ufSel}`}
+                </label>
+                <input
+                  id="sem-slider"
+                  type="range"
+                  min={0}
+                  max={Math.max(0, weekly.length - 1)}
+                  value={semanaIdx}
+                  onChange={(e) => setSemanaIdx(Number(e.target.value))}
+                  disabled={preparing}
+                />
+              </div>
+              <p className="semana-bridge-hint">
+                Arraste o controle ou clique no gráfico — o mapa acima acompanha a semana
+                selecionada.
               </p>
             </div>
           )}

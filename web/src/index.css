@@ -107,7 +107,7 @@ h3 {
 }
 
 .semana-bridge {
-  margin: -2rem 0 3rem;
+  margin: 1.25rem 0 0;
   padding: 1.25rem 1rem;
   background: #fff;
   border: 1px solid var(--line);
@@ -192,6 +192,14 @@ h3 {
   color: var(--ink-muted);
 }
 
+.chapter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  max-width: 12rem;
+}
+
 .state-list {
   list-style: none;
   padding: 0;
@@ -241,6 +249,12 @@ h3 {
   font-size: 0.85rem;
   color: var(--ink-muted);
   margin-top: 0.75rem;
+}
+
+.viz-lead {
+  font-size: 0.92rem;
+  color: var(--ink-muted);
+  margin: 0 0 0.75rem;
 }
 
 .loading {
@@ -297,6 +311,32 @@ h3 {
   display: flex;
   align-items: center;
   gap: 0.35rem;
+}
+
+.legend-btn {
+  font: inherit;
+  font-size: 0.85rem;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+
+.legend-btn:hover {
+  border-color: var(--ink-muted);
+}
+
+.legend-btn.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  font-weight: 600;
+}
+
+.legend-btn.dimmed {
+  opacity: 0.45;
 }
 
 .legend-swatch {

@@ -10,6 +10,7 @@ type Props = {
   counts: MunicipioCount[]
   valueKey?: "notificacoes" | "cluster"
   clusterColors?: readonly string[]
+  clusterFilter?: number | null
   mapKey?: string | number
 }
 
@@ -31,8 +32,19 @@ function choroplethStyle(
   max: number,
   mode: "count" | "cluster",
   clusterColors?: readonly string[],
+  clusterFilter?: number | null,
 ): PathOptions {
   if (mode === "cluster") {
+    const filtered = clusterFilter != null && value !== clusterFilter
+    if (filtered) {
+      return {
+        fillColor: "#ebe3d4",
+        color: "#ddd",
+        weight: 0.15,
+        opacity: 0.25,
+        fillOpacity: 0.2,
+      }
+    }
     const c = clusterColors?.[value] ?? clusterColors?.[0] ?? "#1b7837"
     return {
       fillColor: c,
@@ -54,7 +66,14 @@ function choroplethStyle(
   }
 }
 
-export default function ChoroplethMap({ geo, counts, valueKey = "notificacoes", clusterColors, mapKey }: Props) {
+export default function ChoroplethMap({
+  geo,
+  counts,
+  valueKey = "notificacoes",
+  clusterColors,
+  clusterFilter = null,
+  mapKey,
+}: Props) {
   const lookup = useMemo(() => {
     const m = new Map<string, MunicipioCount & { cluster?: number }>()
     for (const row of counts) {
@@ -71,7 +90,7 @@ export default function ChoroplethMap({ geo, counts, valueKey = "notificacoes", 
     const ca = String((feat?.properties as { codarea?: string })?.codarea ?? "")
     const row = lookup.get(ca)
     const val = valueKey === "cluster" ? ((row as { cluster?: number })?.cluster ?? 0) : (row?.notificacoes ?? 0)
-    return choroplethStyle(val, max, mode, clusterColors)
+    return choroplethStyle(val, max, mode, clusterColors, clusterFilter)
   }
 
   const onEach = (feat: Feature<Geometry>, layer: Layer) => {
