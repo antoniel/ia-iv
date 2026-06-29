@@ -17,6 +17,10 @@ dependencies = [
     "requests>=2.31",
     "folium>=0.20.0",
     "plotly>=6.8.0",
+    "streamlit>=1.28",
+    "streamlit-folium>=0.18",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
 ]
 
 [tool.uv]

@@ -24,3 +24,8 @@ slides/_build/
 *.fls
 *.fdb_latexmk
 *.aux
+
+web/node_modules/
+web/dist/
+
+data/cache/
