@@ -2,6 +2,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Line,
   LineChart,
   ReferenceLine,
@@ -24,6 +25,68 @@ export function ChartAnos({ data }: { data: ResumoAno[] }) {
           labelFormatter={(l) => `Ano ${l}`}
         />
         <Bar dataKey="registros" fill="#9f1239" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+export type ClusterCountRow = {
+  cluster: number;
+  label: string;
+  municipios: number;
+};
+
+export function ChartClusterCounts({
+  data,
+  colors,
+  activeCluster,
+  onClusterSelect,
+}: {
+  data: ClusterCountRow[];
+  colors: string[];
+  activeCluster?: number | null;
+  onClusterSelect?: (cluster: number | null) => void;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <BarChart
+        data={data}
+        margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+        onClick={(state) => {
+          const idx = state?.activeTooltipIndex;
+          if (typeof idx !== "number" || !onClusterSelect) return;
+          const cluster = data[idx]?.cluster;
+          if (cluster == null) return;
+          onClusterSelect(activeCluster === cluster ? null : cluster);
+        }}
+        style={{ cursor: onClusterSelect ? "pointer" : undefined }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="#e7e0d4" />
+        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+        <YAxis
+          tick={{ fontSize: 11 }}
+          allowDecimals={false}
+          label={{ value: "Municípios", angle: -90, position: "insideLeft", offset: 10 }}
+        />
+        <Tooltip
+          formatter={(v: number) => [v.toLocaleString("pt-BR"), "Municípios"]}
+          labelFormatter={(l) => String(l)}
+        />
+        <Bar dataKey="municipios" radius={[4, 4, 0, 0]}>
+          {data.map((row) => {
+            const fill = colors[row.cluster] ?? "#57534e";
+            const dimmed = activeCluster != null && activeCluster !== row.cluster;
+            return (
+              <Cell
+                key={row.cluster}
+                fill={fill}
+                fillOpacity={dimmed ? 0.35 : 1}
+                stroke={activeCluster === row.cluster ? "#1c1917" : "none"}
+                strokeWidth={activeCluster === row.cluster ? 2 : 0}
+              />
+            );
+          })}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

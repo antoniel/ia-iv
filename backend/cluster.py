@@ -22,7 +22,7 @@ def ordenar_clusters(labels: np.ndarray, valores: np.ndarray) -> np.ndarray:
 
 
 def cluster_cache_path(uf: str, ano: int, k: int, min_casos: int) -> Path:
-    return CLUSTER_CACHE / uf.lower() / f"{ano}_k{k}_min{min_casos}_weekly.json"
+    return CLUSTER_CACHE / uf.lower() / f"{ano}_k{k}_min{min_casos}_weekly_raw.json"
 
 
 def compute_weekly_clusters(
@@ -81,9 +81,8 @@ def compute_weekly_clusters(
 
         if not mat_elig.empty:
             casos_elig = mat_elig[col]
-            raw_labels = KMeans(k, random_state=42, n_init=10).fit_predict(
-                np.log1p(casos_elig.values.reshape(-1, 1))
-            )
+            X = casos_elig.values.astype(float).reshape(-1, 1)
+            raw_labels = KMeans(k, random_state=42, n_init=10).fit_predict(X)
             labels = ordenar_clusters(raw_labels, casos_elig.values)
             elig_assign = {
                 id_to_cod[int(id6)]: int(cl)

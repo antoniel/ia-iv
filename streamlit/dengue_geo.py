@@ -107,9 +107,8 @@ def clusters_semanais(ano: int, k: int, min_casos: int) -> pd.DataFrame:
     assign: dict[int, pd.Series] = {}
     for num_sem, col in sem_map.items():
         casos = mat[col].values
-        raw = KMeans(n_clusters=k, random_state=42, n_init=10).fit_predict(
-            np.log1p(casos.reshape(-1, 1))
-        )
+        X = casos.astype(float).reshape(-1, 1)
+        raw = KMeans(n_clusters=k, random_state=42, n_init=10).fit_predict(X)
         assign[num_sem] = pd.Series(
             ordenar_clusters_por_intensidade(raw, casos), index=mat.index
         )
@@ -196,7 +195,7 @@ def plot_diagnostico_semana(
     col = sem_map[num_sem]
     casos = mat[col].values
     clusters = assign_df[num_sem].values
-    sil = silhouette_score(np.log1p(casos.reshape(-1, 1)), clusters)
+    sil = silhouette_score(casos.astype(float).reshape(-1, 1), clusters)
     colors = CLUSTER_COLORS[:k]
     nomes = CLUSTER_NOMES[:k]
     rng = np.random.default_rng(42)

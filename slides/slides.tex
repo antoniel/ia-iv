@@ -1,136 +1,399 @@
 \documentclass[aspectratio=169,xcolor=table]{beamer}
-\usepackage{algorithm}
-\usepackage{algpseudocode}
+
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage{lipsum, lmodern}
+\usepackage[portuguese]{babel}
+\usepackage{lmodern}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{amsmath}
 \usepackage{csquotes}
 \usepackage{xcolor}
-\usepackage[portuguese]{babel}
 
-% ------------------------------------------------
-% Tema e Configurações do Beamer
-% ------------------------------------------------
+\pgfplotsset{compat=1.18}
 \usetheme{DCC}
 
 \setbeamertemplate{itemize items}[circle]
 \setbeamertemplate{itemize subitem}[circle]
-\setlength{\itemsep}{0.8em}
-\setlength{\parskip}{0.5em}
-
+\setlength{\itemsep}{0.45em}
+\setlength{\parskip}{0.35em}
 \graphicspath{{imgs/}{./imgs/}}
 
-\author[Autor1; Autor2]{%
-  \textbf{Autor 1} \and \textbf{Autor 2}
-}
-\title{Título da Apresentação}
-\subtitle{Subtítulo opcional}
-\institute{Instituição \\ Departamento}
+\newcommand{\metricup}{\ensuremath{\uparrow}}
+\newcommand{\metricdown}{\ensuremath{\downarrow}}
+\newcommand{\uf}[1]{\textsc{#1}}
+\newcommand{\smallnote}[1]{\vspace{0.2em}{\scriptsize\color{black!70}#1}}
+
+\author[Antoniel Magalh\~aes]{\textbf{Antoniel Magalh\~aes}}
+\title{Agrupamento n\~ao supervisionado de dengue no Nordeste}
+\subtitle{K-means aplicado a notifica\c{c}\~oes SINAN por munic\'ipio e semana epidemiol\'ogica}
+\institute{Intelig\^encia Artificial IV}
 \date{\today}
 
 \begin{document}
 
-%-------------------------------------------------
-%  SLIDE DE TÍTULO
-%-------------------------------------------------
 \begin{frame}[plain,noframenumbering]
     \titlepage
 \end{frame}
 
-%-------------------------------------------------
-%  SLIDE DE AGENDA
-%-------------------------------------------------
 \begin{frame}{Agenda}
     \tableofcontents
 \end{frame}
 
-\setlength{\parskip}{1em}
+%=================================================
+\section{Problema e dados}
+%=================================================
+\sectionframe
 
-%=================================================
-\section{Seção 1}
-%=================================================
-\begin{frame}{Slide com lista}
+\begin{frame}{Motiva\c{c}\~ao}
+    \begin{block}{Pergunta do trabalho}
+        Como identificar padr\~oes de intensidade de dengue entre munic\'ipios sem r\'otulos pr\'evios de risco?
+    \end{block}
+
     \begin{itemize}
-        \item Primeiro item
-        \item Segundo item
-        \item Terceiro item
+        \item Dengue tem forte varia\c{c}\~ao \textbf{espacial} e \textbf{temporal}.
+        \item Totais anuais escondem picos semanais e deslocamentos regionais.
+        \item O objetivo \textbf{n\~ao} \`e prever casos: \`e descobrir grupos de munic\'ipios com intensidade semelhante.
     \end{itemize}
 \end{frame}
 
-\begin{frame}{Slide com lista aninhada}
-    \begin{itemize}
-        \item Item principal
-        \begin{itemize}
-            \item Subitem A
-            \item Subitem B
-        \end{itemize}
-        \item Outro item principal
-    \end{itemize}
-\end{frame}
+\begin{frame}{Base de dados}
+    \begin{columns}[T]
+        \begin{column}{0.50\textwidth}
+            \textbf{Fonte principal}
+            \begin{itemize}
+                \item SINAN / OpenDataSUS
+                \item Notifica\c{c}\~oes de arboviroses -- dengue
+                \item CSVs nacionais: \texttt{DENGBR16.csv} a \texttt{DENGBR26.csv}
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.45\textwidth}
+            \textbf{Recorte usado}
+            \begin{itemize}
+                \item Nordeste: 9 UFs
+                \item Ano principal da an\'alise: 2024
+                \item Unidade anal\'itica: munic\'ipio $\times$ semana epidemiol\'ogica
+            \end{itemize}
+        \end{column}
+    \end{columns}
 
-%=================================================
-\section{Seção 2}
-%=================================================
-\begin{frame}{Slide com imagem}
-    \begin{center}
-        % \includegraphics[height=0.4\textheight]{nome-da-imagem.png}
-        \fbox{\parbox[c][0.4\textheight][c]{0.6\textwidth}{\centering Placeholder de imagem}}
-    \end{center}
     \vspace{0.5em}
-    Texto complementar abaixo da imagem.
+    \begin{block}{Campos centrais}
+        \texttt{SG\_UF\_NOT} para UF, \texttt{ID\_MUNICIP} para munic\'ipio e \texttt{SEM\_NOT} para semana epidemiol\'ogica.
+    \end{block}
 \end{frame}
 
-\begin{frame}{Slide com texto e lista}
-    Parágrafo introdutório antes da lista.
+\begin{frame}{Pipeline do projeto}
+    \begin{center}
+    \begin{tikzpicture}[node distance=1.55cm, every node/.style={font=\small}]
+        \tikzset{flowstep/.style={rectangle, rounded corners, draw=black!60, fill=MedianUltraLightOrange, minimum width=2.2cm, minimum height=0.8cm, align=center}}
+        \node[flowstep] (raw) {SINAN\\CSV nacional};
+        \node[flowstep, right of=raw, xshift=1.8cm] (filter) {Filtro\\por UF};
+        \node[flowstep, right of=filter, xshift=1.8cm] (agg) {Agrega\c{c}\~ao\\munic\'ipio/semana};
+        \node[flowstep, right of=agg, xshift=1.8cm] (km) {K-means\\semanal};
+        \node[flowstep, right of=km, xshift=1.8cm] (map) {Mapa\\interativo};
+        \draw[->, thick] (raw) -- (filter);
+        \draw[->, thick] (filter) -- (agg);
+        \draw[->, thick] (agg) -- (km);
+        \draw[->, thick] (km) -- (map);
+    \end{tikzpicture}
+    \end{center}
 
     \begin{itemize}
-        \item \textbf{Rótulo:} descrição do item
-        \item \textbf{Rótulo:} descrição do item
+        \item Malhas municipais do IBGE s\~ao usadas para visualiza\c{c}\~ao espacial.
+        \item Processamento e clusters ficam em cache para evitar recomputa\c{c}\~ao.
     \end{itemize}
 \end{frame}
 
-\begin{frame}{Slide com colunas}
+%=================================================
+\section{Modelo n\~ao supervisionado}
+%=================================================
+\sectionframe
+
+\begin{frame}{Por que aprendizado n\~ao supervisionado?}
+    \begin{itemize}
+        \item N\~ao existe no dado um r\'otulo pronto como ``baixo'', ``alto'' ou ``cr\'itico''.
+        \item Queremos encontrar grupos a partir da pr\'opria distribui\c{c}\~ao dos casos.
+        \item O K-means transforma contagens brutas em faixas interpret\'aveis no mapa.
+    \end{itemize}
+
+    \begin{block}{Interpreta\c{c}\~ao desejada}
+        Grupos ordinais de intensidade: menor intensidade $\rightarrow$ maior intensidade.
+    \end{block}
+\end{frame}
+
+\begin{frame}{Como o K-means foi aplicado}
+    Para cada UF, ano e semana epidemiol\'ogica:
+
+    \begin{enumerate}
+        \item Montar vetor de casos por munic\'ipio.
+        \item Filtrar munic\'ipios eleg\'iveis: total anual $\geq 30$ casos.
+        \item Transformar a contagem: $X = \log(1 + casos)$.
+        \item Aplicar K-means em uma dimens\~ao.
+        \item Reordenar clusters pela m\'edia de casos.
+    \end{enumerate}
+
+    \begin{block}{Por que usar \(\log(1 + casos)\)?}
+        A distribui\c{c}\~ao de dengue \`e muito assim\'etrica: poucos munic\'ipios concentram muitos casos. O log reduz o peso dos outliers.
+    \end{block}
+\end{frame}
+
+\begin{frame}{O problema de escolher K}
     \begin{columns}[T]
         \begin{column}{0.48\textwidth}
-            \textbf{Coluna esquerda}
+            \textbf{K baixo}
             \begin{itemize}
-                \item Item 1
-                \item Item 2
+                \item Mais est\'avel
+                \item Mais simples
+                \item Pode esconder padr\~oes relevantes
             \end{itemize}
         \end{column}
         \begin{column}{0.48\textwidth}
-            \textbf{Coluna direita}
+            \textbf{K alto}
             \begin{itemize}
-                \item Item A
-                \item Item B
+                \item Mais granular
+                \item Melhora algumas m\'etricas internas
+                \item Pode gerar clusters pequenos e inst\'aveis
+            \end{itemize}
+        \end{column}
+    \end{columns}
+
+    \vspace{0.5em}
+    \begin{alertblock}{Crit\'erio pr\'atico}
+        O melhor K inicial precisa equilibrar qualidade estat\'istica, estabilidade temporal e leitura visual no mapa.
+    \end{alertblock}
+\end{frame}
+
+%=================================================
+\section{Valida\c{c}\~ao de K}
+%=================================================
+\sectionframe
+
+\begin{frame}{M\'etricas usadas}
+    \small
+    \begin{tabular}{p{0.25\textwidth} p{0.17\textwidth} p{0.48\textwidth}}
+        \toprule
+        \textbf{M\'etrica} & \textbf{Dire\c{c}\~ao} & \textbf{O que avalia} \\
+        \midrule
+        Silhouette & maior melhor & Coes\~ao interna e separa\c{c}\~ao entre clusters \\
+        Davies--Bouldin & menor melhor & Dispers\~ao intra-cluster vs dist\^ancia entre clusters \\
+        Calinski--Harabasz & maior melhor & Vari\^ancia entre clusters vs dentro dos clusters \\
+        Inertia / cotovelo & joelho da curva & Ponto de ganho marginal decrescente \\
+        ARI consecutivo & maior melhor & Estabilidade entre semanas consecutivas \\
+        \bottomrule
+    \end{tabular}
+
+    \smallnote{Como o dado \`e 1D, silhouette e Davies--Bouldin tendem a favorecer K alto. Por isso o cotovelo e a interpretabilidade s\~ao decisivos.}
+\end{frame}
+
+\begin{frame}{Cobertura analisada em 2024}
+    \small
+    \begin{columns}[T]
+        \begin{column}{0.42\textwidth}
+            \begin{tabular}{lrr}
+                \toprule
+                \textbf{UF} & \textbf{Eleg\'iveis} & \textbf{Total} \\
+                \midrule
+                BA & 352 & 415 \\
+                PE & 88 & 180 \\
+                MA & 71 & 198 \\
+                RN & 54 & 157 \\
+                PB & 53 & 204 \\
+                PI & 52 & 170 \\
+                CE & 47 & 178 \\
+                AL & 38 & 93 \\
+                SE & 9 & 56 \\
+                \bottomrule
+            \end{tabular}
+        \end{column}
+        \begin{column}{0.55\textwidth}
+            \begin{tikzpicture}
+            \begin{axis}[
+                ybar,
+                width=\textwidth,
+                height=0.62\textheight,
+                symbolic x coords={BA,PE,MA,RN,PB,PI,CE,AL,SE},
+                xtick=data,
+                ylabel={Munic\'ipios eleg\'iveis},
+                ymin=0,
+                bar width=9pt,
+                nodes near coords,
+                nodes near coords style={font=\tiny},
+                tick label style={font=\scriptsize},
+                ymajorgrids=true,
+                grid style={black!10}
+            ]
+            \addplot[fill=MedianOrange] coordinates {(BA,352) (PE,88) (MA,71) (RN,54) (PB,53) (PI,52) (CE,47) (AL,38) (SE,9)};
+            \end{axis}
+            \end{tikzpicture}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Resultados agregados: Nordeste 2024}
+    \small
+    \begin{tabular}{rrrrrr}
+        \toprule
+        \textbf{K} & \textbf{Silhouette} & \textbf{DB} & \textbf{Inertia} & \textbf{ARI} & \textbf{menor cluster} \\
+        \midrule
+        2 & 0{,}744 & 0{,}431 & 25{,}9 & \textbf{0{,}451} & 19{,}7 \\
+        3 & 0{,}774 & 0{,}366 & 11{,}3 & 0{,}301 & 11{,}4 \\
+        \rowcolor{MedianUltraLightOrange}
+        \textbf{4} & \textbf{0{,}801} & \textbf{0{,}298} & \textbf{5{,}6} & 0{,}285 & \textbf{7{,}6} \\
+        5 & 0{,}822 & 0{,}247 & 3{,}2 & 0{,}280 & 5{,}4 \\
+        6 & 0{,}837 & 0{,}206 & 1{,}9 & 0{,}279 & 4{,}1 \\
+        7 & 0{,}846 & 0{,}173 & 1{,}3 & 0{,}277 & 3{,}2 \\
+        8 & \textbf{0{,}854} & \textbf{0{,}149} & 0{,}9 & 0{,}276 & 2{,}5 \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{0.4em}
+    \smallnote{Silhouette e DB melhoram com K alto, mas o tamanho do menor cluster cai. ARI favorece K=2. O cotovelo da inertia indica o ponto de equil\'ibrio.}
+\end{frame}
+
+\begin{frame}{Cotovelo da inertia}
+    \begin{columns}[T]
+        \begin{column}{0.58\textwidth}
+            \begin{tikzpicture}
+            \begin{axis}[
+                width=\textwidth,
+                height=0.68\textheight,
+                xlabel={K},
+                ylabel={Inertia m\'edia},
+                xtick={2,3,4,5,6,7,8},
+                ymin=0,
+                ymajorgrids=true,
+                grid style={black!10},
+                legend pos=north east
+            ]
+            \addplot[color=MedianOrange, mark=* , thick] coordinates {(2,25.9) (3,11.3) (4,5.6) (5,3.2) (6,1.9) (7,1.3) (8,0.9)};
+            \addlegendentry{Inertia}
+            \addplot[color=DCCRedHard, dashed, thick] coordinates {(4,0) (4,26)};
+            \addlegendentry{cotovelo: K=4}
+            \end{axis}
+            \end{tikzpicture}
+        \end{column}
+        \begin{column}{0.38\textwidth}
+            \begin{block}{Resultado}
+                O cotovelo escolheu \textbf{K=4 em 9/9 UFs}.
+            \end{block}
+            \begin{itemize}
+                \item K=2 ainda reduz muito a complexidade.
+                \item Depois de K=4, o ganho marginal cai.
+                \item K alto fragmenta os grupos.
             \end{itemize}
         \end{column}
     \end{columns}
 \end{frame}
 
-\begin{frame}{Slide com bloco de destaque}
-    \begin{block}{Bloco informativo}
-        Conteúdo dentro de um \texttt{block}.
-    \end{block}
+\begin{frame}{Votos por m\'etrica}
+    \small
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{M\'etrica} & \textbf{Vencedor por UF} \\
+        \midrule
+        Cotovelo / inertia & \textbf{K=4 em 9/9 UFs} \\
+        ARI / estabilidade & K=2 em 9/9 UFs \\
+        Silhouette & K=8 em 8/9 UFs; K=4 em 1/9 \\
+        Davies--Bouldin & K=8 em 9/9 UFs \\
+        Calinski--Harabasz & K=8 em 5/9; K=7 em 2/9; disperso nos demais \\
+        \bottomrule
+    \end{tabular}
 
-    \begin{alertblock}{Bloco de alerta}
-        Conteúdo dentro de um \texttt{alertblock}.
+    \vspace{0.6em}
+    \begin{alertblock}{Leitura}
+        N\~ao existe uma \u201cm\'etrica m\'agica\u201d. Em clustering 1D, m\'etricas internas puras empurram K para cima. O default precisa ser uma decis\~ao de compromisso.
     \end{alertblock}
 \end{frame}
 
-%=================================================
-\section{Conclusão}
-%=================================================
-\begin{frame}{Conclusão}
-    Texto de encerramento da apresentação.
+\begin{frame}{Bahia como refer\^encia}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \small
+            \begin{tabular}{rrrrr}
+                \toprule
+                \textbf{K} & \textbf{Sil.} & \textbf{DB} & \textbf{ARI} & \textbf{menor cluster} \\
+                \midrule
+                2 & 0{,}734 & 0{,}501 & \textbf{0{,}481} & 87 \\
+                3 & 0{,}765 & 0{,}480 & 0{,}342 & 42 \\
+                \rowcolor{MedianUltraLightOrange}
+                \textbf{4} & \textbf{0{,}789} & \textbf{0{,}446} & 0{,}331 & \textbf{20} \\
+                5 & 0{,}810 & 0{,}409 & 0{,}322 & 13 \\
+                8 & 0{,}846 & 0{,}341 & 0{,}314 & 4 \\
+                \bottomrule
+            \end{tabular}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \begin{itemize}
+                \item BA tem 352 munic\'ipios eleg\'iveis: maior base da an\'alise.
+                \item K=8 melhora silhouette, mas cria clusters m\'edios m\'inimos de apenas 4 munic\'ipios.
+                \item K=4 preserva granularidade sem quebrar demais o mapa.
+            \end{itemize}
+        \end{column}
+    \end{columns}
 \end{frame}
 
 %=================================================
-\section{Perguntas}
+\section{Decis\~ao e limita\c{c}\~oes}
 %=================================================
-\begin{frame}{Perguntas e Comentários}
+\sectionframe
+
+\begin{frame}{Racional final: por que K=4?}
+    \begin{enumerate}
+        \item \textbf{Cotovelo robusto:} K=4 foi escolhido em 9/9 UFs.
+        \item \textbf{Interpretabilidade:} quatro grupos comunicam bem baixa, moderada, alta e cr\'itica intensidade.
+        \item \textbf{Evita simplifica\c{c}\~ao excessiva:} K=2 \`e est\'avel, mas pouco informativo.
+        \item \textbf{Evita fragmenta\c{c}\~ao:} K=8 melhora m\'etricas internas, mas cria grupos pequenos.
+        \item \textbf{Ader\^encia ao dashboard:} K=4 funciona bem para mapa coropl\'etico e legenda ordinal.
+    \end{enumerate}
+
+    \begin{block}{Conclus\~ao}
+        K=4 n\~ao \u00e9 o \u201c\'otimo absoluto\u201d de uma m\'etrica isolada; \u00e9 o melhor \textbf{default inicial} para an\'alise e apresenta\c{c}\~ao.
+    \end{block}
+\end{frame}
+
+\begin{frame}{Limita\c{c}\~oes}
+    \begin{itemize}
+        \item Usa contagem absoluta de casos, ainda sem normaliza\c{c}\~ao por popula\c{c}\~ao.
+        \item Clustering \`e semanal e independente; fronteiras mudam a cada semana.
+        \item A vari\'avel de entrada \u00e9 1D: apenas casos semanais transformados por log.
+        \item Munic\'ipios com menos de 30 casos/ano recebem tratamento especial.
+        \item M\'etricas internas podem favorecer K alto em dados orden\'aveis.
+        \item Resultado principal foi calibrado em 2024; outros anos podem ter din\^amicas diferentes.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Pr\'oximos passos}
+    \begin{itemize}
+        \item Repetir a an\'alise para 2022 e 2023.
+        \item Comparar \texttt{min\_casos=10} vs \texttt{min\_casos=30}.
+        \item Normalizar por popula\c{c}\~ao: casos por 100 mil habitantes.
+        \item Medir estabilidade em janelas m\'oveis de 4 semanas.
+        \item Avaliar K adaptativo para UFs pequenas, como Sergipe.
+        \item Cruzar clusters com a\c{c}\~oes de controle vetorial e indicadores externos.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Conclus\~ao}
+    \begin{block}{Mensagem principal}
+        A IA n\~ao supervisionada transformou notifica\c{c}\~oes brutas em grupos interpret\'aveis de intensidade semanal de dengue.
+    \end{block}
+
+    \begin{itemize}
+        \item K-means ajuda a revelar padr\~oes espaciais e temporais sem r\'otulos pr\'evios.
+        \item K=4 \u00e9 uma escolha empiricamente sustentada pelo cotovelo e adequada para comunica\c{c}\~ao visual.
+        \item O modelo ainda precisa evoluir para incid\^encia populacional e valida\c{c}\~ao externa.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Perguntas}
     \begin{center}
         \Huge Obrigado!
+
+        \vspace{0.8em}
+        \large Perguntas e coment\'arios
     \end{center}
 \end{frame}
 

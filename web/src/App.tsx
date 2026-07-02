@@ -9,7 +9,7 @@ import {
   type StateMeta,
 } from "./api";
 import ChoroplethMap from "./components/ChoroplethMap";
-import { ChartAnos, ChartSemanas } from "./components/Charts";
+import { ChartAnos, ChartClusterCounts, ChartSemanas } from "./components/Charts";
 import SectionLoader from "./components/SectionLoader";
 import { useRegionData } from "./hooks/useData";
 import { CLUSTER_COLORS, CLUSTER_NOMES, type ResumoAno } from "./types";
@@ -232,6 +232,16 @@ export default function App() {
     });
   }, [weekly.length, semana, municipios, clusterByUf, weeklyCountsByUf, ufSel]);
 
+  const clusterCounts = useMemo(
+    () =>
+      Array.from({ length: k }, (_, i) => ({
+        cluster: i,
+        label: clusterLabel(i, k),
+        municipios: clusterData.filter((m) => m.cluster === i).length,
+      })),
+    [clusterData, k],
+  );
+
   const casosSemana = weekly[semanaIdx]?.casos ?? 0;
 
   const stateOptions = useMemo(
@@ -425,6 +435,22 @@ export default function App() {
                   ? `${clusterData.filter((m) => m.cluster === clusterFilter).length} municípios`
                   : `${clusterData.length} municípios`}
                 {ufSel === UF_TODOS ? ` · ${mapUfs.length} estados` : ` · ${ufSel}`}
+              </p>
+            </div>
+          )}
+          {weekly.length > 0 && clusterCounts.some((row) => row.municipios > 0) && (
+            <div className="viz">
+              <p className="viz-lead">
+                Municípios por cluster — semana {semana} · {mapLabel}.
+              </p>
+              <ChartClusterCounts
+                data={clusterCounts}
+                colors={clusterColors}
+                activeCluster={clusterFilter}
+                onClusterSelect={setClusterFilter}
+              />
+              <p className="viz-caption">
+                Clique numa barra ou na legenda para filtrar o mapa.
               </p>
             </div>
           )}
