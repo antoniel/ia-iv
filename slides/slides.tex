@@ -27,8 +27,8 @@
 \newcommand{\smallnote}[1]{\vspace{0.2em}{\scriptsize\color{black!70}#1}}
 
 \author[Antoniel Magalh\~aes]{\textbf{Antoniel Magalh\~aes}}
-\title{Agrupamento n\~ao supervisionado de dengue no Nordeste}
-\subtitle{K-means aplicado a notifica\c{c}\~oes SINAN por munic\'ipio e semana epidemiol\'ogica}
+\title{Perfis epidemiol\'ogicos de dengue por clusteriza\c{c}\~ao}
+\subtitle{Aprendizado n\~ao supervisionado em munic\'ipios da Bahia (SINAN 2024)}
 \institute{Intelig\^encia Artificial IV}
 \date{\today}
 
@@ -48,14 +48,15 @@
 \sectionframe
 
 \begin{frame}{Motiva\c{c}\~ao}
-    \begin{block}{Pergunta do trabalho}
-        Como identificar padr\~oes de intensidade de dengue entre munic\'ipios sem r\'otulos pr\'evios de risco?
+    \begin{block}{Pergunta central}
+        Quais perfis epidemiol\'ogicos emergem ao combinar incid\^encia, tend\^encia temporal e contexto municipal, e como munic\'ipios transitam entre esses perfis ao longo das semanas?
     \end{block}
 
     \begin{itemize}
-        \item Dengue tem forte varia\c{c}\~ao \textbf{espacial} e \textbf{temporal}.
-        \item Totais anuais escondem picos semanais e deslocamentos regionais.
-        \item O objetivo \textbf{n\~ao} \`e prever casos: \`e descobrir grupos de munic\'ipios com intensidade semelhante.
+        \item Dengue varia no \textbf{territ\'orio} e no \textbf{tempo}: totais anuais escondem picos semanais.
+        \item Olhar s\'o casos absolutos favorece munic\'ipios populosos.
+        \item O objetivo \`e descobrir \textbf{est\'agios de propaga\c{c}\~ao} recorrentes entre munic\'ipios e semanas.
+        \item Os perfis emergem do agrupamento a partir dos padr\~oes no dado semanal.
     \end{itemize}
 \end{frame}
 
@@ -65,130 +66,222 @@
             \textbf{Fonte principal}
             \begin{itemize}
                 \item SINAN / OpenDataSUS
-                \item Notifica\c{c}\~oes de arboviroses -- dengue
+                \item Notifica\c{c}\~oes de arboviroses (dengue)
                 \item CSVs nacionais: \texttt{DENGBR16.csv} a \texttt{DENGBR26.csv}
             \end{itemize}
         \end{column}
         \begin{column}{0.45\textwidth}
-            \textbf{Recorte usado}
+            \textbf{Recorte da an\'alise principal}
             \begin{itemize}
-                \item Nordeste: 9 UFs
-                \item Ano principal da an\'alise: 2024
-                \item Unidade anal\'itica: munic\'ipio $\times$ semana epidemiol\'ogica
+                \item Bahia (\uf{BA}), ano 2024
+                \item 352 munic\'ipios eleg\'iveis ($\geq 30$ casos/ano)
+                \item 18.304 linhas: munic\'ipio $\times$ semana epidemiol\'ogica
             \end{itemize}
         \end{column}
     \end{columns}
 
     \vspace{0.5em}
-    \begin{block}{Campos centrais}
-        \texttt{SG\_UF\_NOT} para UF, \texttt{ID\_MUNICIP} para munic\'ipio e \texttt{SEM\_NOT} para semana epidemiol\'ogica.
+    \begin{block}{Campos e refer\^encias auxiliares}
+        \texttt{ID\_MUNICIP}, \texttt{SEM\_NOT} no SINAN; popula\c{c}\~ao e \'{a}rea municipal (IBGE) para incid\^encia e densidade.
     \end{block}
+
+    \smallnote{Escolha de $K$ foi calibrada no Nordeste inteiro (9 UFs); a narrativa de features usa BA como caso principal.}
 \end{frame}
 
-\begin{frame}{Pipeline do projeto}
+%=================================================
+\section{Metodologia}
+%=================================================
+\sectionframe
+
+\begin{frame}{Unidade anal\'itica}
     \begin{center}
-    \begin{tikzpicture}[node distance=1.55cm, every node/.style={font=\small}]
-        \tikzset{flowstep/.style={rectangle, rounded corners, draw=black!60, fill=MedianUltraLightOrange, minimum width=2.2cm, minimum height=0.8cm, align=center}}
-        \node[flowstep] (raw) {SINAN\\CSV nacional};
-        \node[flowstep, right of=raw, xshift=1.8cm] (filter) {Filtro\\por UF};
-        \node[flowstep, right of=filter, xshift=1.8cm] (agg) {Agrega\c{c}\~ao\\munic\'ipio/semana};
-        \node[flowstep, right of=agg, xshift=1.8cm] (km) {K-means\\semanal};
-        \node[flowstep, right of=km, xshift=1.8cm] (map) {Mapa\\interativo};
-        \draw[->, thick] (raw) -- (filter);
-        \draw[->, thick] (filter) -- (agg);
-        \draw[->, thick] (agg) -- (km);
-        \draw[->, thick] (km) -- (map);
+    \begin{tikzpicture}[node distance=1.4cm, every node/.style={font=\small}]
+        \tikzset{flowstep/.style={rectangle, rounded corners, draw=black!60, fill=MedianUltraLightOrange, minimum width=2.4cm, minimum height=0.85cm, align=center}}
+        \node[flowstep] (sinan) {Notifica\c{c}\~oes\\SINAN};
+        \node[flowstep, right of=sinan, xshift=1.6cm] (panel) {Painel\\munic\'ipio/semana};
+        \node[flowstep, right of=panel, xshift=1.6cm] (feat) {Features\\versionadas};
+        \node[flowstep, right of=feat, xshift=1.6cm] (km) {K-means\\$K=4$};
+        \node[flowstep, right of=km, xshift=1.6cm] (trans) {Transi\c{c}\~oes\\$t \rightarrow t{+}1$};
+        \draw[->, thick] (sinan) -- (panel);
+        \draw[->, thick] (panel) -- (feat);
+        \draw[->, thick] (feat) -- (km);
+        \draw[->, thick] (km) -- (trans);
     \end{tikzpicture}
     \end{center}
 
     \begin{itemize}
-        \item Malhas municipais do IBGE s\~ao usadas para visualiza\c{c}\~ao espacial.
-        \item Processamento e clusters ficam em cache para evitar recomputa\c{c}\~ao.
+        \item Cada linha = \textbf{situa\c{c}\~ao epidemiol\'ogica} de um munic\'ipio em uma semana.
+        \item Features padronizadas antes do K-means (\texttt{StandardScaler}).
+        \item Clusters reordenados pela m\'edia de casos (interpreta\c{c}\~ao ordinal).
+        \item Pipeline reprodut\'ivel: \texttt{uv run ia-iv} + log \texttt{experiments.jsonl}.
     \end{itemize}
 \end{frame}
-
-%=================================================
-\section{Modelo n\~ao supervisionado}
-%=================================================
-\sectionframe
 
 \begin{frame}{Por que aprendizado n\~ao supervisionado?}
     \begin{itemize}
-        \item N\~ao existe no dado um r\'otulo pronto como ``baixo'', ``alto'' ou ``cr\'itico''.
-        \item Queremos encontrar grupos a partir da pr\'opria distribui\c{c}\~ao dos casos.
-        \item O K-means transforma contagens brutas em faixas interpret\'aveis no mapa.
+        \item O dado bruto registra casos por munic\'ipio/semana, sem r\'otulos de alerta ou surto.
+        \item Queremos \textbf{descobrir} padr\~oes recorrentes e depois interpret\'a-los como est\'agios.
+        \item A valida\c{c}\~ao posterior (ex.: alerta $\rightarrow$ alta incid\^encia na semana seguinte) checa a utilidade dos perfis encontrados.
     \end{itemize}
 
-    \begin{block}{Interpreta\c{c}\~ao desejada}
-        Grupos ordinais de intensidade: menor intensidade $\rightarrow$ maior intensidade.
+    \begin{block}{Formula\c{c}\~ao segura}
+        Ferramenta explorat\'oria para vigil\^encia: identificar perfis e acompanhar transi\c{c}\~oes territoriais.
     \end{block}
 \end{frame}
 
-\begin{frame}{Como o K-means foi aplicado}
-    Para cada UF, ano e semana epidemiol\'ogica:
+%=================================================
+\section{Evolu\c{c}\~ao das features}
+%=================================================
+\sectionframe
 
-    \begin{enumerate}
-        \item Montar vetor de casos por munic\'ipio.
-        \item Filtrar munic\'ipios eleg\'iveis: total anual $\geq 30$ casos.
-        \item Transformar a contagem: $X = \log(1 + casos)$.
-        \item Aplicar K-means em uma dimens\~ao.
-        \item Reordenar clusters pela m\'edia de casos.
-    \end{enumerate}
+\begin{frame}{Escada v0 a v5: +1 feature por vers\~ao}
+    \small
+    \begin{tabular}{clp{0.42\textwidth}}
+        \toprule
+        \textbf{Vers\~ao} & \textbf{+ feature} & \textbf{Inten\c{c}\~ao narrativa} \\
+        \midrule
+        v0 & casos absolutos & baseline: separa munic\'ipios grandes \\
+        v1 & incid\^encia / 100 mil & compara munic\'ipios de portes distintos \\
+        v2 & m\'edia m\'ovel (3 sem.) & suaviza ru\'ido de notifica\c{c}\~ao \\
+        v3 & crescimento semanal & separa est\'avel de subida ou queda \\
+        v4 & acelera\c{c}\~ao & distingue surto acelerando de surto estabilizado \\
+        v5 & densidade (hab/km$^2$) & contexto urbano vs interior \\
+        \bottomrule
+    \end{tabular}
 
-    \begin{block}{Por que usar \(\log(1 + casos)\)?}
-        A distribui\c{c}\~ao de dengue \`e muito assim\'etrica: poucos munic\'ipios concentram muitos casos. O log reduz o peso dos outliers.
-    \end{block}
+    \vspace{0.5em}
+    \begin{alertblock}{Li\c{c}\~ao m\'etodol\'ogica}
+        v0 com uma dimens\~ao tende a virar quase uma ordena\c{c}\~ao por casos. A evolu\c{c}\~ao mostra \textbf{por que} features temporais e contextuais importam.
+    \end{alertblock}
 \end{frame}
 
-\begin{frame}{O problema de escolher K}
+\begin{frame}{Silhouette ao longo da escada (BA 2024, $K=4$)}
+    \begin{columns}[T]
+        \begin{column}{0.52\textwidth}
+            \begin{tikzpicture}
+            \begin{axis}[
+                width=\textwidth,
+                height=0.68\textheight,
+                xlabel={Vers\~ao},
+                ylabel={Silhouette},
+                symbolic x coords={v0,v1,v2,v3,v4,v5},
+                xtick=data,
+                ymin=0.82,
+                ymax=0.94,
+                ymajorgrids=true,
+                grid style={black!10}
+            ]
+            \addplot[color=MedianOrange, mark=*, thick] coordinates {(v0,0.923) (v1,0.878) (v2,0.869) (v3,0.850) (v4,0.850) (v5,0.845)};
+            \end{axis}
+            \end{tikzpicture}
+        \end{column}
+        \begin{column}{0.44\textwidth}
+            \begin{itemize}
+                \item Silhouette \textbf{cai} ao enriquecer features: esperado quando sa\'imos de 1D.
+                \item v1 j\'a muda perfis vs v0: incid\^encia separa munic\'ipios distintos na Bahia.
+                \item v5 reduz pouco a m\'etrica ($0{,}850 \rightarrow 0{,}845$), mas melhora a leitura territorial.
+            \end{itemize}
+            \smallnote{Escolhemos a vers\~ao final pela interpretabilidade epidemiol\'ogica, al\'em da m\'etrica interna.}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{v0 vs v1: por que normalizar?}
+    \small
     \begin{columns}[T]
         \begin{column}{0.48\textwidth}
-            \textbf{K baixo}
+            \textbf{v0 (casos absolutos)}
             \begin{itemize}
-                \item Mais est\'avel
-                \item Mais simples
-                \item Pode esconder padr\~oes relevantes
+                \item Silhouette alta (0{,}92), mas perfil trivial.
+                \item Cluster 3: m\'edia de 2.540 casos/semana (Salvador e grandes centros).
+                \item 97\% das linhas no cluster de baixa contagem absoluta.
             \end{itemize}
         \end{column}
         \begin{column}{0.48\textwidth}
-            \textbf{K alto}
+            \textbf{v1 (+ incid\^encia / 100 mil)}
             \begin{itemize}
-                \item Mais granular
-                \item Melhora algumas m\'etricas internas
-                \item Pode gerar clusters pequenos e inst\'aveis
+                \item Mesmo munic\'ipio grande pode ter incid\^encia moderada.
+                \item Interior com poucos casos deixa de ser ``igual'' a capital em repouso.
+                \item Base para comparar \textbf{munic\'ipios entre si} pelo risco relativo.
             \end{itemize}
         \end{column}
     \end{columns}
 
     \vspace{0.5em}
-    \begin{alertblock}{Crit\'erio pr\'atico}
-        O melhor K inicial precisa equilibrar qualidade estat\'istica, estabilidade temporal e leitura visual no mapa.
-    \end{alertblock}
+    \begin{block}{Insight}
+        Em uma \u{u}nica cidade, incid\^encia $\approx$ casos $\times$ constante. No painel BA, v1 passa a importar de verdade.
+    \end{block}
 \end{frame}
 
 %=================================================
-\section{Valida\c{c}\~ao de K}
+\section{Perfis e transi\c{c}\~oes}
 %=================================================
 \sectionframe
 
-\begin{frame}{M\'etricas usadas}
+\begin{frame}{Perfis m\'edios no modelo v5 ($K=4$)}
+    \small
+    \begin{tabular}{clrrr}
+        \toprule
+        \textbf{Cluster} & \textbf{Leitura sugerida} & \textbf{Incid\^encia} & \textbf{Cresc.} & \textbf{Densidade} \\
+        & & \textbf{/100 mil} & \textbf{sem.} & \textbf{hab/km$^2$} \\
+        \midrule
+        0 & baixa incid\^encia, interior & 19 & 0{,}0 & 43 \\
+        1 & incid\^encia moderada em queda & 341 & $-$187 & 30 \\
+        2 & \textbf{urbano denso, baixa incid\^encia} & 5 & 0{,}0 & 3.733 \\
+        3 & alta incid\^encia em crescimento & 540 & +168 & 38 \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{0.5em}
+    \begin{itemize}
+        \item Cluster 2 isola metr\'opoles densas com poucos casos na semana (contexto urbano).
+        \item Cluster 3 captura surto/crescimento em munic\'ipios menores.
+        \item Nomes s\~ao \textbf{interpreta\c{c}\~ao p\'os-cluster}, derivados do perfil m\'edio de cada grupo.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Transi\c{c}\~oes semanais (v5)}
+    \begin{columns}[T]
+        \begin{column}{0.55\textwidth}
+            \textbf{Matriz de transi\c{c}\~ao} (munic\'ipio, semana $t \rightarrow t{+}1$)
+            \begin{itemize}
+                \item Persist\^encia alta no cluster de baixa incid\^encia.
+                \item Caminhos alerta $\rightarrow$ crescimento $\rightarrow$ alta incid\^encia aparecem nos clusters din\^amicos.
+                \item v0 concentra transi\c{c}\~oes em faixas de volume; v5 enriquece leitura de \textbf{trajet\'oria}.
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.42\textwidth}
+            \begin{block}{Utilidade pr\'atica}
+                Identificar munic\'ipios que ainda t\^em poucos casos, mas perfil parecido com quem piorou nas semanas seguintes.
+            \end{block}
+            \smallnote{An\'alise explorat\'oria: indica trajet\'orias semanais entre perfis.}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+%=================================================
+\section{Escolha de $K$}
+%=================================================
+\sectionframe
+
+\begin{frame}{M\'etricas usadas na calibra\c{c}\~ao de $K$}
     \small
     \begin{tabular}{p{0.25\textwidth} p{0.17\textwidth} p{0.48\textwidth}}
         \toprule
         \textbf{M\'etrica} & \textbf{Dire\c{c}\~ao} & \textbf{O que avalia} \\
         \midrule
         Silhouette & maior melhor & Coes\~ao interna e separa\c{c}\~ao entre clusters \\
-        Davies--Bouldin & menor melhor & Dispers\~ao intra-cluster vs dist\^ancia entre clusters \\
-        Calinski--Harabasz & maior melhor & Vari\^ancia entre clusters vs dentro dos clusters \\
-        Inertia / cotovelo & joelho da curva & Ponto de ganho marginal decrescente \\
+        Davies--Bouldin & menor melhor & Dispers\~ao intra vs dist\^ancia entre clusters \\
+        Calinski--Harabasz & maior melhor & Vari\^ancia entre vs dentro dos clusters \\
+        Inertia / cotovelo & joelho da curva & Ganho marginal decrescente \\
         ARI consecutivo & maior melhor & Estabilidade entre semanas consecutivas \\
         \bottomrule
     \end{tabular}
 
-    \smallnote{Como o dado \`e 1D, silhouette e Davies--Bouldin tendem a favorecer K alto. Por isso o cotovelo e a interpretabilidade s\~ao decisivos.}
+    \smallnote{Calibra\c{c}\~ao inicial em clustering 1D por UF (casos + log). M\'etricas internas puras tendem a favorecer $K$ alto.}
 \end{frame}
 
-\begin{frame}{Cobertura analisada em 2024}
+\begin{frame}{Cobertura Nordeste 2024 (eleg\'iveis por UF)}
     \small
     \begin{columns}[T]
         \begin{column}{0.42\textwidth}
@@ -232,7 +325,7 @@
     \end{columns}
 \end{frame}
 
-\begin{frame}{Resultados agregados: Nordeste 2024}
+\begin{frame}{Resultados agregados: Nordeste 2024 (baseline 1D)}
     \small
     \begin{tabular}{rrrrrr}
         \toprule
@@ -250,7 +343,7 @@
     \end{tabular}
 
     \vspace{0.4em}
-    \smallnote{Silhouette e DB melhoram com K alto, mas o tamanho do menor cluster cai. ARI favorece K=2. O cotovelo da inertia indica o ponto de equil\'ibrio.}
+    \smallnote{Cotovelo da inertia escolheu $K=4$ em 9/9 UFs. Silhouette m\'axima pediria $K$ maior, mas fragmenta grupos.}
 \end{frame}
 
 \begin{frame}{Cotovelo da inertia}
@@ -276,116 +369,54 @@
             \end{tikzpicture}
         \end{column}
         \begin{column}{0.38\textwidth}
-            \begin{block}{Resultado}
-                O cotovelo escolheu \textbf{K=4 em 9/9 UFs}.
+            \begin{block}{Decis\~ao}
+                \textbf{K=4} equilibra interpretabilidade, estabilidade e leitura visual.
             \end{block}
             \begin{itemize}
-                \item K=2 ainda reduz muito a complexidade.
-                \item Depois de K=4, o ganho marginal cai.
-                \item K alto fragmenta os grupos.
-            \end{itemize}
-        \end{column}
-    \end{columns}
-\end{frame}
-
-\begin{frame}{Votos por m\'etrica}
-    \small
-    \begin{tabular}{ll}
-        \toprule
-        \textbf{M\'etrica} & \textbf{Vencedor por UF} \\
-        \midrule
-        Cotovelo / inertia & \textbf{K=4 em 9/9 UFs} \\
-        ARI / estabilidade & K=2 em 9/9 UFs \\
-        Silhouette & K=8 em 8/9 UFs; K=4 em 1/9 \\
-        Davies--Bouldin & K=8 em 9/9 UFs \\
-        Calinski--Harabasz & K=8 em 5/9; K=7 em 2/9; disperso nos demais \\
-        \bottomrule
-    \end{tabular}
-
-    \vspace{0.6em}
-    \begin{alertblock}{Leitura}
-        N\~ao existe uma \u201cm\'etrica m\'agica\u201d. Em clustering 1D, m\'etricas internas puras empurram K para cima. O default precisa ser uma decis\~ao de compromisso.
-    \end{alertblock}
-\end{frame}
-
-\begin{frame}{Bahia como refer\^encia}
-    \begin{columns}[T]
-        \begin{column}{0.48\textwidth}
-            \small
-            \begin{tabular}{rrrrr}
-                \toprule
-                \textbf{K} & \textbf{Sil.} & \textbf{DB} & \textbf{ARI} & \textbf{menor cluster} \\
-                \midrule
-                2 & 0{,}734 & 0{,}501 & \textbf{0{,}481} & 87 \\
-                3 & 0{,}765 & 0{,}480 & 0{,}342 & 42 \\
-                \rowcolor{MedianUltraLightOrange}
-                \textbf{4} & \textbf{0{,}789} & \textbf{0{,}446} & 0{,}331 & \textbf{20} \\
-                5 & 0{,}810 & 0{,}409 & 0{,}322 & 13 \\
-                8 & 0{,}846 & 0{,}341 & 0{,}314 & 4 \\
-                \bottomrule
-            \end{tabular}
-        \end{column}
-        \begin{column}{0.48\textwidth}
-            \begin{itemize}
-                \item BA tem 352 munic\'ipios eleg\'iveis: maior base da an\'alise.
-                \item K=8 melhora silhouette, mas cria clusters m\'edios m\'inimos de apenas 4 munic\'ipios.
-                \item K=4 preserva granularidade sem quebrar demais o mapa.
+                \item K=2: est\'avel, pouco informativo.
+                \item K=8: m\'etricas melhores, clusters m\'inimos de 2 a 4 munic\'ipios.
+                \item Mantido em todo o pipeline multivariado da Bahia.
             \end{itemize}
         \end{column}
     \end{columns}
 \end{frame}
 
 %=================================================
-\section{Decis\~ao e limita\c{c}\~oes}
+\section{Conclus\~ao}
 %=================================================
 \sectionframe
 
-\begin{frame}{Racional final: por que K=4?}
-    \begin{enumerate}
-        \item \textbf{Cotovelo robusto:} K=4 foi escolhido em 9/9 UFs.
-        \item \textbf{Interpretabilidade:} quatro grupos comunicam bem baixa, moderada, alta e cr\'itica intensidade.
-        \item \textbf{Evita simplifica\c{c}\~ao excessiva:} K=2 \`e est\'avel, mas pouco informativo.
-        \item \textbf{Evita fragmenta\c{c}\~ao:} K=8 melhora m\'etricas internas, mas cria grupos pequenos.
-        \item \textbf{Ader\^encia ao dashboard:} K=4 funciona bem para mapa coropl\'etico e legenda ordinal.
-    \end{enumerate}
-
-    \begin{block}{Conclus\~ao}
-        K=4 n\~ao \u00e9 o \u201c\'otimo absoluto\u201d de uma m\'etrica isolada; \u00e9 o melhor \textbf{default inicial} para an\'alise e apresenta\c{c}\~ao.
-    \end{block}
-\end{frame}
-
 \begin{frame}{Limita\c{c}\~oes}
     \begin{itemize}
-        \item Usa contagem absoluta de casos, ainda sem normaliza\c{c}\~ao por popula\c{c}\~ao.
-        \item Clustering \`e semanal e independente; fronteiras mudam a cada semana.
-        \item A vari\'avel de entrada \u00e9 1D: apenas casos semanais transformados por log.
-        \item Munic\'ipios com menos de 30 casos/ano recebem tratamento especial.
-        \item M\'etricas internas podem favorecer K alto em dados orden\'aveis.
-        \item Resultado principal foi calibrado em 2024; outros anos podem ter din\^amicas diferentes.
+        \item Recorte principal: Bahia 2024; generaliza\c{c}\~ao a outros anos e UFs ainda a validar.
+        \item Sazonalidade c\'iclca (sin/cos) foi testada e \textbf{descartada}: piorou silhouette sem ganho interpret\'avel.
+        \item Clima defasado (chuva, temperatura) ainda n\~ao entrou no modelo.
+        \item Transi\c{c}\~oes s\~ao calculadas depois do agrupamento semanal.
+        \item Subnotifica\c{c}\~ao e heterogeneidade da vigil\^encia municipal limitam comparabilidade.
     \end{itemize}
 \end{frame}
 
 \begin{frame}{Pr\'oximos passos}
     \begin{itemize}
-        \item Repetir a an\'alise para 2022 e 2023.
-        \item Comparar \texttt{min\_casos=10} vs \texttt{min\_casos=30}.
-        \item Normalizar por popula\c{c}\~ao: casos por 100 mil habitantes.
-        \item Medir estabilidade em janelas m\'oveis de 4 semanas.
-        \item Avaliar K adaptativo para UFs pequenas, como Sergipe.
-        \item Cruzar clusters com a\c{c}\~oes de controle vetorial e indicadores externos.
+        \item Estender painel multivariado a outras UFs do Nordeste.
+        \item Testar GMM para probabilidade de pertencimento a cada perfil.
+        \item Integrar chuva e temperatura defasadas, se cobertura clim\'atica permitir.
+        \item Validar transi\c{c}\~oes alerta $\rightarrow$ surto como checagem posterior dos perfis.
+        \item Comparar clusters com faixas fixas de incid\^encia (baseline epidemiol\'ogico simples).
     \end{itemize}
 \end{frame}
 
 \begin{frame}{Conclus\~ao}
     \begin{block}{Mensagem principal}
-        A IA n\~ao supervisionada transformou notifica\c{c}\~oes brutas em grupos interpret\'aveis de intensidade semanal de dengue.
+        Clusteriza\c{c}\~ao n\~ao supervisionada transforma s\'eries semanais de dengue em \textbf{est\'agios interpret\'aveis de propaga\c{c}\~ao} e permite acompanhar \textbf{transi\c{c}\~oes} territoriais.
     \end{block}
 
-    \begin{itemize}
-        \item K-means ajuda a revelar padr\~oes espaciais e temporais sem r\'otulos pr\'evios.
-        \item K=4 \u00e9 uma escolha empiricamente sustentada pelo cotovelo e adequada para comunica\c{c}\~ao visual.
-        \item O modelo ainda precisa evoluir para incid\^encia populacional e valida\c{c}\~ao externa.
-    \end{itemize}
+    \begin{enumerate}
+        \item v0 mostra o limite de casos absolutos; v1 a v4 adicionam din\^amica epidemiol\'ogica.
+        \item v5 traz contexto urbano (densidade) com pequeno custo em m\'etrica interna.
+        \item $K=4$ veio de calibra\c{c}\~ao no Nordeste e se mant\'em leg\'ivel na apresenta\c{c}\~ao.
+        \item Resultado pr\'atico: ferramenta explorat\'oria para vigil\^encia epidemiol\'ogica municipal.
+    \end{enumerate}
 \end{frame}
 
 \begin{frame}{Perguntas}

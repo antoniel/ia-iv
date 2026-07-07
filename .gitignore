@@ -10,6 +10,10 @@ data/interim/
 data/processed/
 data/cache/
 
+# Parquets municipais versionados (pipeline ml/)
+!data/ml/
+!data/ml/**
+
 slides/*.pdf
 slides/_build/
 

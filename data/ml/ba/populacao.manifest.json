@@ -1,0 +1,9 @@
+{
+  "region": "ba",
+  "uf": "BA",
+  "year": 2024,
+  "municipios": 417,
+  "pop_source": "https://servicodados.ibge.gov.br/api/v3/agregados/6579/periodos/2024/variaveis/9324",
+  "area_source": "https://servicodados.ibge.gov.br/api/v3/agregados/4714/periodos/2022/variaveis/6318",
+  "output": "data/ml/ba/populacao.parquet"
+}
