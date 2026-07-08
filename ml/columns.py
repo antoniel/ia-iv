@@ -54,6 +54,9 @@ FEATURES_V4: tuple[str, ...] = (*FEATURES_V3, Feat.ACELERACAO)
 
 FEATURES_V5: tuple[str, ...] = (*FEATURES_V4, Feat.DENSIDADE_KM2)
 
+# Modelo enxuto: nível (incidência) × trajetória (crescimento)
+FEATURES_CORE: tuple[str, ...] = (Feat.INCIDENCIA_100K, Feat.CRESCIMENTO)
+
 FEATURE_SETS: dict[str, tuple[str, ...]] = {
     "v0": FEATURES_V0,
     "v1": FEATURES_V1,
@@ -61,6 +64,7 @@ FEATURE_SETS: dict[str, tuple[str, ...]] = {
     "v3": FEATURES_V3,
     "v4": FEATURES_V4,
     "v5": FEATURES_V5,
+    "core": FEATURES_CORE,
 }
 
 VERSION_BLOCKS: dict[str, str] = {
@@ -70,6 +74,7 @@ VERSION_BLOCKS: dict[str, str] = {
     "v3": "+ crescimento semanal",
     "v4": "+ aceleração",
     "v5": "+ densidade populacional (hab/km²)",
+    "core": "incidência × crescimento",
 }
 
 

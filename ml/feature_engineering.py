@@ -95,7 +95,8 @@ def build_features(
     panel = weekly_panel(raw, region, year, min_casos_anual=min_casos_anual)
     panel = add_temporal_features(panel)
 
-    keep = [Col.ID_MUNICIP, Col.SEM_NOT, Feat.SEMANA_EP, *features]
+    # CASOS fica no painel para interpretação/ordenação, mesmo se não entrar no fit
+    keep = list(dict.fromkeys([Col.ID_MUNICIP, Col.SEM_NOT, Feat.SEMANA_EP, Feat.CASOS, *features]))
     out = panel[keep].copy()
     log.info(
         "[%s %d %s] painel: %d linhas (município×semana), %d features",
