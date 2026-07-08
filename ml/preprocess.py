@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import logging
 import time
+from pathlib import Path
 
 import pandas as pd
 
 from ml.columns import Col, REQUIRED_RAW_COLS
-from ml.config import DEFAULT_CHUNKSIZE, DEFAULT_YEARS, ROOT
+from ml.config import DEFAULT_CHUNKSIZE, DEFAULT_YEARS, ROOT, UF_IBGE
 from ml.paths import (
     processed_uf_csv_path,
     raw_csv_path,
@@ -30,14 +31,13 @@ def _validate_header(csv_path) -> None:
         raise RuntimeError(f"{csv_path.name}: colunas ausentes {missing}")
 
 
-def _read_year_csv(region: RegionSpec, year: int, *, chunksize: int) -> pd.DataFrame:
-    processed = processed_uf_csv_path(region.uf, year)
+def _read_uf_year_csv(uf: str, uf_code: int, year: int, *, chunksize: int) -> pd.DataFrame:
+    processed = processed_uf_csv_path(uf, year)
     usecols = list({*REQUIRED_RAW_COLS, Col.ID_AGRAVO})
 
     if processed.exists():
-        log.info("[%s %d] CSV estadual → %s", region.slug, year, processed.name)
-        df = pd.read_csv(processed, usecols=usecols, low_memory=False)
-        return df
+        log.info("[%s %d] CSV estadual → %s", uf.lower(), year, processed.name)
+        return pd.read_csv(processed, usecols=usecols, low_memory=False)
 
     inp = raw_csv_path(year)
     if not inp.exists():
@@ -46,15 +46,28 @@ def _read_year_csv(region: RegionSpec, year: int, *, chunksize: int) -> pd.DataF
             f"Rode: uv run ia-iv --data --download --years {year}"
         )
     _validate_header(inp)
-    log.info("[%s %d] extraindo de %s (UF=%d)…", region.slug, year, inp.name, region.uf_code)
+    log.info("[%s %d] extraindo de %s (UF=%d)…", uf.lower(), year, inp.name, uf_code)
     chunks: list[pd.DataFrame] = []
     for chunk in pd.read_csv(inp, usecols=usecols, chunksize=chunksize, low_memory=False):
-        filtered = chunk.loc[chunk[Col.SG_UF_NOT] == region.uf_code]
+        filtered = chunk.loc[chunk[Col.SG_UF_NOT] == uf_code]
         if not filtered.empty:
             chunks.append(filtered)
     if not chunks:
-        return pd.DataFrame(columns=[*usecols, YEAR_COL])
+        return pd.DataFrame(columns=usecols)
     return pd.concat(chunks, ignore_index=True)
+
+
+def _read_year_csv(region: RegionSpec, year: int, *, chunksize: int) -> pd.DataFrame:
+    frames: list[pd.DataFrame] = []
+    for uf in region.ufs:
+        uf_code = UF_IBGE[uf.upper()]
+        df = _read_uf_year_csv(uf, uf_code, year, chunksize=chunksize)
+        if not df.empty:
+            frames.append(df)
+    if not frames:
+        usecols = list({*REQUIRED_RAW_COLS, Col.ID_AGRAVO})
+        return pd.DataFrame(columns=usecols)
+    return pd.concat(frames, ignore_index=True)
 
 
 def build_region_parquet(
@@ -103,8 +116,10 @@ def build_region_parquet(
         {
             "region": region.name,
             "slug": region.slug,
-            "uf": region.uf,
-            "uf_code": region.uf_code,
+            "uf": region.uf if not region.is_multi_uf else ",".join(region.ufs),
+            "ufs": list(region.ufs),
+            "uf_code": region.uf_code if not region.is_multi_uf else None,
+            "uf_codes": sorted(region.uf_codes),
             "years": years,
             "registros_por_ano": registros_por_ano,
             "municipios_por_ano": municipios_por_ano,

@@ -52,7 +52,7 @@ FEATURES_V3: tuple[str, ...] = (*FEATURES_V2, Feat.CRESCIMENTO)
 
 FEATURES_V4: tuple[str, ...] = (*FEATURES_V3, Feat.ACELERACAO)
 
-FEATURES_V5: tuple[str, ...] = (*FEATURES_V4, Feat.DENSIDADE_KM2)
+FEATURES_V5: tuple[str, ...] = FEATURES_V4
 
 # Modelo enxuto: nível (incidência) × trajetória (crescimento)
 FEATURES_CORE: tuple[str, ...] = (Feat.INCIDENCIA_100K, Feat.CRESCIMENTO)
@@ -82,5 +82,7 @@ def resolve_features(version: str) -> tuple[str, ...]:
     key = version.strip().lower()
     if key not in FEATURE_SETS:
         known = ", ".join(sorted(FEATURE_SETS))
-        raise ValueError(f"Versão de features desconhecida: {version!r}. Opções: {known}")
+        raise ValueError(
+            f"Versão de features desconhecida: {version!r}. Opções: {known}"
+        )
     return FEATURE_SETS[key]

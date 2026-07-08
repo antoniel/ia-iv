@@ -36,7 +36,7 @@ log = logging.getLogger(__name__)
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Pipeline ML iterativo IA-IV (município×semana)")
-    p.add_argument("--region", default="ba", help="Região/UF agregada (padrão: ba)")
+    p.add_argument("--region", default="ba", help="Região agregada: ba ou ne (padrão: ba)")
     p.add_argument("--year", type=int, default=2024, help="Ano analisado no experimento")
     p.add_argument("--version", default="v0", help="Conjunto de features: v0…v5 ou core")
     p.add_argument("--k", type=int, default=DEFAULT_K)

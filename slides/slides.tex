@@ -55,7 +55,7 @@
     \begin{itemize}
         \item Dengue varia no \textbf{territ\'orio} e no \textbf{tempo}: totais anuais escondem picos semanais.
         \item Olhar s\'o casos absolutos favorece munic\'ipios populosos.
-        \item O objetivo \`e descobrir \textbf{est\'agios de propaga\c{c}\~ao} recorrentes entre munic\'ipios e semanas.
+        \item O objetivo \'e descobrir \textbf{est\'agios de propaga\c{c}\~ao} recorrentes entre munic\'ipios e semanas.
         \item Os perfis emergem do agrupamento a partir dos padr\~oes no dado semanal.
     \end{itemize}
 \end{frame}
@@ -111,9 +111,8 @@
 
     \begin{itemize}
         \item Cada linha = \textbf{situa\c{c}\~ao epidemiol\'ogica} de um munic\'ipio em uma semana.
-        \item Features padronizadas antes do K-means (\texttt{StandardScaler}).
-        \item Clusters reordenados pela m\'edia de casos (interpreta\c{c}\~ao ordinal).
-        \item Pipeline reprodut\'ivel: \texttt{uv run ia-iv} + log \texttt{experiments.jsonl}.
+        \item Features padronizadas antes do K-means
+        \item Clusters reordenados pela m\'edia de casos
     \end{itemize}
 \end{frame}
 

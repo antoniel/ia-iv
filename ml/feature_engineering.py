@@ -28,7 +28,7 @@ def weekly_panel(
     min_casos_anual: int = DEFAULT_MIN_CASOS_ANUAL,
 ) -> pd.DataFrame:
     """Agrega município × semana; completa semanas faltantes com 0 casos."""
-    pop_df = load_population(region.slug, region.uf, REFERENCE_POP_YEAR)
+    pop_df = load_population(region.slug, region.ufs, REFERENCE_POP_YEAR)
     pop_map = pop_df.set_index("id_municip")["populacao"]
     dens_map = pop_df.set_index("id_municip")[Feat.DENSIDADE_KM2]
 
